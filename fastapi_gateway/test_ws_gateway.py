@@ -12,18 +12,36 @@ import sounddevice as sd
 BASE_URL_WS = "ws://127.0.0.1:8000/ws/voice"
 SAMPLE_RATE = 16000
 
-def play_async(mp3_bytes: bytes):
+import queue
+import threading
+
+audio_queue = queue.Queue()
+
+def audio_player_worker():
     cache_dir = os.path.abspath("audio_cache")
     os.makedirs(cache_dir, exist_ok=True)
-    path = os.path.join(cache_dir, f"ws_resp_{int(time.time()*1000)}.mp3")
-    
-    with open(path, "wb") as f:
-        f.write(mp3_bytes)
+    while True:
+        mp3_bytes = audio_queue.get()
+        if mp3_bytes is None:
+            continue
+        path = os.path.join(cache_dir, f"ws_resp_{int(time.time()*1000)}.mp3")
+        with open(path, "wb") as f:
+            f.write(mp3_bytes)
+            
+        alias = f"mp3_{int(time.time()*1000)}"
+        ctypes.windll.winmm.mciSendStringW(f"open \"{path}\" type mpegvideo alias {alias}", None, 0, None)
+        ctypes.windll.winmm.mciSendStringW(f"play {alias} wait", None, 0, None)
+        ctypes.windll.winmm.mciSendStringW(f"close {alias}", None, 0, None)
+        # Çalınan dosyayı anında sil (disk şişmesin)
+        try:
+            os.remove(path)
+        except Exception:
+            pass
 
-    ctypes.windll.winmm.mciSendStringW(f"close current_mp3", None, 0, None)
-    cmd_open = f"open \"{path}\" type mpegvideo alias current_mp3"
-    ctypes.windll.winmm.mciSendStringW(cmd_open, None, 0, None)
-    ctypes.windll.winmm.mciSendStringW("play current_mp3", None, 0, None)
+threading.Thread(target=audio_player_worker, daemon=True).start()
+
+def queue_play_async(mp3_bytes: bytes):
+    audio_queue.put(mp3_bytes)
 
 async def test_ws():
     session_id = str(uuid.uuid4())[:8]
@@ -36,22 +54,44 @@ async def test_ws():
     try:
         async with websockets.connect(url) as ws:
             print("✅ Canlı Bağlantı Kuruldu!")
-            
+            stop_time = 0.0
+            stt_done_time = 0.0
+            n8n_done_time = 0.0
+            ttfb_done = False
+
             async def receive_messages():
+                nonlocal stop_time, stt_done_time, n8n_done_time, ttfb_done
                 try:
                     while True:
                         msg = await ws.recv()
                         data = json.loads(msg)
+                        now = time.time()
+                        
                         if data.get("type") == "live_transcript":
                             print(f"\r🗣️ Söylediğin: {data['text']} ", end="", flush=True)
                         elif data.get("type") == "final_transcript":
+                            stt_done_time = now
+                            latency_stt = (stt_done_time - stop_time) * 1000 if stop_time > 0 else 0
                             print(f"\n✅ SEN: {data['text']}")
-                            print("⏳ [0.1s] STT tamamlandı, n8n düşünülüyor...")
+                            print(f"⏱️  [STT Gecikmesi: {latency_stt:.0f} ms]")
                         elif data.get("type") == "bot_text":
+                            n8n_done_time = now
+                            latency_n8n = (n8n_done_time - stt_done_time) * 1000 if stt_done_time > 0 else 0
                             print(f"🤖 ASİSTAN: {data['text']}")
-                        elif data.get("type") == "bot_audio":
-                            print("🔊 Ses geldi, çalınıyor...")
-                            play_async(base64.b64decode(data["audio_base64"]))
+                            print(f"⏱️  [N8N Gecikmesi: {latency_n8n:.0f} ms]")
+                            ttfb_done = False
+                        elif data.get("type") == "bot_sentence":
+                            if not ttfb_done:
+                                ttfb_done = True
+                                latency_ttfb = (now - n8n_done_time) * 1000 if n8n_done_time > 0 else 0
+                                print(f"🔊 [İLK CÜMLE ULAŞTI!] ⏱️  [İlk Cümle Gecikmesi: {latency_ttfb:.0f} ms]")
+                            
+                            print(f"🎵 Cümle Çalınıyor: {data['text']}")
+                            queue_play_async(base64.b64decode(data["audio_base64"]))
+                            
+                            if data.get("is_last_sentence"):
+                                latency_total = (now - stop_time) * 1000 if stop_time > 0 else 0
+                                print(f"⚡ TOPLAM GECİKME (Tüm Konuşma Sonu): {latency_total:.0f} ms\n")
                         elif data.get("error"):
                             print(f"\n❌ Sunucu Hatası: {data['error']}")
                 except websockets.exceptions.ConnectionClosed as e:
@@ -78,11 +118,13 @@ async def test_ws():
                         except Exception:
                             pass
                 
-                stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="int16", blocksize=4096, callback=audio_callback)
+                stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=1, dtype="int16", blocksize=1024, callback=audio_callback)
                 stream.start()
                 
                 # Susa kadar bekle
                 await asyncio.to_thread(input)
+                
+                stop_time = time.time()
                 
                 stop_event.set()
                 stream.stop()

@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     # STT & TTS Settings
     GROQ_API_KEY: str  # .env dosyasından okunur
     DEEPGRAM_API_KEY: str # .env
+    ELEVENLABS_API_KEY: str # .env
+    ELEVENLABS_VOICE_ID: str = "pNInz6obpgDQGcFmaJcg"
     TTS_VOICE: str = "tr-TR-AhmetNeural"  # Alternatif: tr-TR-EmelNeural
     TTS_RATE: str = "+25%"  # Konuşma hızı: +0%=normal, +25%=hızlı, +50%=çok hızlı
     

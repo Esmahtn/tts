@@ -1,5 +1,7 @@
 import logging
 from typing import List, Dict, Any
+import struct
+import io
 
 import httpx
 from fastapi import FastAPI, HTTPException, status
@@ -9,10 +11,8 @@ from config import settings
 from models import ChatRequest, ChatResponse
 from audio_utils import transcribe_audio, synthesize_speech
 from fastapi import UploadFile, File, Form
-# Loglama ayarları
 import json
 import asyncio
-import websockets
 from fastapi import WebSocket, WebSocketDisconnect
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -102,81 +102,105 @@ async def _call_n8n(payload: Dict[str, Any]) -> Dict[str, Any]:
 @app.websocket("/ws/voice")
 async def websocket_voice_endpoint(websocket: WebSocket, session_id: str):
     await websocket.accept()
-    from audio_utils import synthesize_speech, clean_text_for_tts
+    from audio_utils import synthesize_sentences, clean_text_for_tts
 
     try:
         while True:
-            # 1. Connect to Deepgram STT WebSocket per utterance
-            dg_url = "wss://api.deepgram.com/v1/listen?model=nova-2&language=tr&smart_format=true&encoding=linear16&sample_rate=16000&channels=1"
+            # 1. Ses verilerini Client'ten topla
+            audio_chunks: List[bytes] = []
             
-            async with websockets.connect(
-                dg_url, 
-                additional_headers={"Authorization": f"Token {settings.DEEPGRAM_API_KEY}"}
-            ) as dg_socket:
+            # İstemciden ses al ya da kontrol mesajı bekle
+            while True:
+                data = await websocket.receive()
                 
-                transcript = ""
-                
-                # Task to receive from Deepgram
-                async def receive_from_deepgram():
-                    nonlocal transcript
-                    try:
-                        async for message in dg_socket:
-                            data = json.loads(message)
-                            if data.get("is_final"):
-                                alts = data.get("channel", {}).get("alternatives", [])
-                                if alts and alts[0].get("transcript"):
-                                    transcript += alts[0]["transcript"] + " "
-                                    await websocket.send_json({"type": "live_transcript", "text": alts[0]["transcript"]})
-                    except Exception as e:
-                        logger.error(f"Deepgram receive error: {e}")
-                        
-                dg_task = asyncio.create_task(receive_from_deepgram())
-                
-                # Receive audio from Client
-                while True:
-                    data = await websocket.receive()
+                if "bytes" in data:
+                    audio_chunks.append(data["bytes"])
                     
-                    if "bytes" in data:
-                        await dg_socket.send(data["bytes"])
-                        
-                    elif "text" in data:
-                        msg = json.loads(data["text"])
-                        if msg.get("event") == "stop":
-                            # Tell deepgram we are done sending audio
-                            await dg_socket.send(b"")
-                            # Wait briefly for deepgram to send final transcript
-                            await asyncio.sleep(0.5)
-                            break
-                            
-                # Force cancel deepgram task if it didn't finish
-                dg_task.cancel()
-                
-                final_text = transcript.strip()
-                if not final_text:
-                    final_text = "Anlaşılamadı."
-                    
-                # Send final text to Unity so it knows what it heard
-                await websocket.send_json({"type": "final_transcript", "text": final_text})
-                
-                # 2. Send text to n8n
-                n8n_payload = {"userInput": final_text, "sessionId": session_id}
-                n8n_response = await _call_n8n(n8n_payload)
-                
-                raw_bot_text = n8n_response.get("response", "Anlaşılamadı.")
-                clean_bot_text = clean_text_for_tts(raw_bot_text)
-                
-                # Send text to Unity
-                await websocket.send_json({
-                    "type": "bot_text", 
-                    "text": clean_bot_text,
-                    "state": int(n8n_response.get("currentState", 0)),
-                    "sub_state": n8n_response.get("subState", "INIT")
-                })
-                
-                # 3. TTS (Edge-TTS)
-                if clean_bot_text:
-                    audio_b64 = await synthesize_speech(clean_bot_text)
-                    await websocket.send_json({"type": "bot_audio", "audio_base64": audio_b64})
+                elif "text" in data:
+                    msg = json.loads(data["text"])
+                    if msg.get("event") == "stop":
+                        break
+            
+            # 2. Toplanan ham PCM sesini WAV formatına çevir
+            raw_pcm = b"".join(audio_chunks)
+            
+            # WAV başlığı (header) oluştur: 16kHz, Mono, 16-bit PCM
+            sample_rate = 16000
+            num_channels = 1
+            bits_per_sample = 16
+            byte_rate = sample_rate * num_channels * bits_per_sample // 8
+            block_align = num_channels * bits_per_sample // 8
+            data_size = len(raw_pcm)
+            
+            wav_header = struct.pack(
+                '<4sI4s4sIHHIIHH4sI',
+                b'RIFF',
+                36 + data_size,
+                b'WAVE',
+                b'fmt ',
+                16,           # Subchunk1Size (PCM)
+                1,            # AudioFormat (PCM = 1)
+                num_channels,
+                sample_rate,
+                byte_rate,
+                block_align,
+                bits_per_sample,
+                b'data',
+                data_size
+            )
+            wav_bytes = wav_header + raw_pcm
+            
+            # 3. Groq Whisper STT
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    files = {"file": ("audio.wav", wav_bytes, "audio/wav")}
+                    data_form = {
+                        "model": "whisper-large-v3-turbo",
+                        "language": "tr",
+                        "response_format": "json"
+                    }
+                    groq_response = await client.post(
+                        "https://api.groq.com/openai/v1/audio/transcriptions",
+                        headers={"Authorization": f"Bearer {settings.GROQ_API_KEY}"},
+                        files=files,
+                        data=data_form
+                    )
+                    groq_response.raise_for_status()
+                    final_text = groq_response.json().get("text", "").strip()
+            except Exception as e:
+                logger.error(f"Groq STT Error: {e}")
+                final_text = ""
+            
+            if not final_text:
+                final_text = "Anlaşılamadı."
+            
+            logger.info(f"Groq STT: {final_text}")
+            await websocket.send_json({"type": "final_transcript", "text": final_text})
+            
+            # 4. N8N'e gönder
+            n8n_payload = {"userInput": final_text, "sessionId": session_id}
+            n8n_response = await _call_n8n(n8n_payload)
+            
+            raw_bot_text = n8n_response.get("response", "Anlaşılamadı.")
+            clean_bot_text = clean_text_for_tts(raw_bot_text)
+            
+            # Unity'ye metni gönder
+            await websocket.send_json({
+                "type": "bot_text", 
+                "text": clean_bot_text,
+                "state": int(n8n_response.get("currentState", 0)),
+                "sub_state": n8n_response.get("subState", "INIT")
+            })
+            
+            # 5. TTS (Cümle Bazlı, Paralel)
+            if clean_bot_text:
+                async for sentence_data in synthesize_sentences(clean_bot_text):
+                    await websocket.send_json({
+                        "type": "bot_sentence",
+                        "text": sentence_data["text"],
+                        "audio_base64": sentence_data["audio_base64"],
+                        "is_last_sentence": sentence_data["is_last_sentence"]
+                    })
                     
     except WebSocketDisconnect:
         logger.info("Client disconnected normally")
