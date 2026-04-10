@@ -1,0 +1,581 @@
+{
+  "name": "shopping-assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shopping-assistant",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "4f88314c-41cc-477f-877e-9bc8ab8523f0",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        208
+      ],
+      "webhookId": "asd-shopping-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "const sessions = $getWorkflowStaticData('global');\nconst raw = $input.first().json;\nconst body = raw.body ?? raw;\nconst sessionId = String(body.sessionId ?? 'default');\nconst userInput = String(body.userInput ?? '').trim();\nconst inputType = String(body.inputType ?? 'text');\n\nif (!sessions[sessionId]) {\n  sessions[sessionId] = {\n    currentState: 0,\n    productList: ['süt', 'yumurta'],\n    currentItemIndex: 0,\n    foundItems: [],\n    missingItems: [],\n    hintCount: 0,\n    subState: 'INIT',\n    timeoutCount: 0,\n    notFoundAttempts: 0,\n    notFoundItem: null,\n    notFoundReason: null,\n    exceptionChoice: null,\n    previousState: null\n  };\n}\n\nconst session = JSON.parse(JSON.stringify(sessions[sessionId]));\nreturn [{ json: { sessionId, userInput, inputType, session } }];"
+      },
+      "id": "2234706c-e9e2-4987-8ff8-93e01fff83b6",
+      "name": "LoadSession",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "s0",
+                    "leftValue": "={{ $json.session.currentState }}",
+                    "rightValue": 0,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "s1",
+                    "leftValue": "={{ $json.session.currentState }}",
+                    "rightValue": 1,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "s2",
+                    "leftValue": "={{ $json.session.currentState }}",
+                    "rightValue": 2,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "s3",
+                    "leftValue": "={{ $json.session.currentState }}",
+                    "rightValue": 3,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "s4",
+                    "leftValue": "={{ $json.session.currentState }}",
+                    "rightValue": 4,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "1e6d8690-456a-460b-a279-b7f3c9cbfd7d",
+                    "leftValue": "={{ $json.session.currentState }}",
+                    "rightValue": "5",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fc12e0fa-b105-416b-ab8e-8852820e23ac",
+      "name": "RouteByState",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -16,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalize(str) {\n  return str.toLowerCase()\n    .replace(/ş/g, 's').replace(/ı/g, 'i').replace(/ö/g, 'o')\n    .replace(/ü/g, 'u').replace(/ç/g, 'c').replace(/ğ/g, 'g')\n    .replace(/[^a-z0-9\\s]/g, '').trim();\n}\nfunction levenshtein(a, b) {\n  const m = a.length, n = b.length;\n  const dp = Array.from({ length: m + 1 }, (_, i) => [i]);\n  for (let j = 0; j <= n; j++) dp[0][j] = j;\n  for (let i = 1; i <= m; i++)\n    for (let j = 1; j <= n; j++)\n      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);\n  return dp[m][n];\n}\nfunction dynamicTolerance(word) {\n  const len = word.length;\n  if (len <= 3) return 0; if (len <= 5) return 1; if (len <= 8) return 2; return 3;\n}\nfunction substringScore(input, keyword) {\n  if (input.includes(keyword)) return 1.0;\n  const minLen = Math.floor(keyword.length * 0.6);\n  for (let i = 0; i <= keyword.length - minLen; i++)\n    if (input.includes(keyword.slice(i, i + minLen))) return 0.7;\n  return 0;\n}\nfunction fuzzyMatch(input, keywords) {\n  const normInput = normalize(input);\n  const inputWords = normInput.split(/\\s+/);\n  for (const kw of keywords) {\n    const normKw = normalize(kw);\n    const kwWords = normKw.split(/\\s+/);\n    if (normInput.includes(normKw)) return true;\n    if (substringScore(normInput, normKw) >= 0.7) return true;\n    let matched = 0;\n    for (const kwWord of kwWords) {\n      const tol = dynamicTolerance(kwWord);\n      for (const inputWord of inputWords)\n        if (levenshtein(inputWord, kwWord) <= tol) { matched++; break; }\n    }\n    if (matched / kwWords.length >= 0.7) return true;\n  }\n  return false;\n}\n\n// ============================================================\n// STATE 0 - ONBOARDING\n// ============================================================\nconst sessions = $getWorkflowStaticData('global');\nconst raw = $input.first().json;\nconst sessionId = raw.sessionId;\nconst userInput = String(raw.userInput || '').trim();\nconst session = JSON.parse(JSON.stringify(raw.session));\n\nlet response = '';\nlet needsLLM = false;\nlet llmSystemPrompt = '';\nlet llmUserPrompt = '';\n\nconst isTimeout = userInput === '__timeout__';\n\nif (isTimeout) {\n  session.timeoutCount = (session.timeoutCount || 0) + 1;\n} else if (userInput !== '') {\n  session.timeoutCount = 0;\n}\n\nswitch (session.subState) {\n\n  case 'INIT':\n    response = 'Merhaba! Hadi alışverişe başlayalım. Bugün listende kaç ürün var? 2 mi 3 mü?';\n    session.subState = 'WAITING_COUNT';\n    session.timeoutCount = 0;\n    break;\n\n  case 'WAITING_COUNT':\n    if (isTimeout) {\n      if (session.timeoutCount >= 3) {\n        needsLLM = true;\n        llmSystemPrompt = `Sen otizmli bireyler için alışveriş becerisi eğitimi veren, sabırlı ve destekleyici bir asistansın. Kullanıcı alışveriş simülasyonuna başlamak için cevap vermiyor. Onu nazikçe ve motive edici bir şekilde teşvik et. Kaç ürün almak istediğini (2 veya 3) sorarak devam etmesini sağla. Yanıtın 1-2 cümle ve Türkçe olsun.`;\n        llmUserPrompt = '__TESVIK__';\n        session.timeoutCount = 0;\n      } else {\n        response = 'Bugün listende kaç ürün var? 2 mi 3 mü?';\n      }\n      break;\n    }\n\n    needsLLM = true;\n    llmSystemPrompt = `Sen otizmli bireyler için alışveriş becerisi eğitimi veren bir asistansın.\nKullanıcının mesajını analiz et. Alışveriş listesinde 2 ürün mü yoksa 3 ürün mü olduğunu anlamaya çalışıyoruz.\n\nKARAR VER:\n- Kullanıcı 2 veya \"iki\" anlamına gelen bir şey söylediyse → \"count\": 2\n- Kullanıcı 3 veya \"üç\" anlamına gelen bir şey söylediyse → \"count\": 3\n- Belirsizse → \"count\": 0\n\nSADECE şu JSON formatında yanıt ver, başka hiçbir şey yazma:\n{\n  \"count\": <0, 2 veya 3>,\n  \"response\": \"kullanıcıya verilecek kısa Türkçe yanıt\"\n}\n\ncount 2 veya 3 ise response: \"Harika! Marketin içindeysen başlayalım de!\"\ncount 0 ise response: nazikçe 2 veya 3 seçmesini isteyen bir cümle`;\n    llmUserPrompt = userInput;\n    break;\n\n  case 'WAITING_START':\n    if (isTimeout) {\n      if (session.timeoutCount >= 3) {\n        needsLLM = true;\n        llmSystemPrompt = `Sen otizmli bireyler için alışveriş becerisi eğitimi veren, sabırlı ve destekleyici bir asistansın. Kullanıcı markete girdiğinde \"başlayalım\" demesi gerekiyor ama cevap vermiyor. Onu nazikçe teşvik et. Yanıtın 1-2 cümle ve Türkçe olsun.`;\n        llmUserPrompt = '__TESVIK__';\n        session.timeoutCount = 0;\n      } else {\n        response = 'Marketin içindeysen başlayalım de!';\n      }\n      break;\n    }\n\n    if (fuzzyMatch(userInput, ['baslayalim', 'basla', 'hazirim', 'hazir', 'tamam', 'evet', 'ok', 'hadi', 'gidelim', 'devam'])) {\n      session.currentState = 1;\n      session.subState = 'INIT';\n      session.timeoutCount = 0;\n      response = 'Harika, hadi başlayalım!';\n    } else {\n      needsLLM = true;\n      llmSystemPrompt = `Sen otizmli bireyler için alışveriş becerisi eğitimi veren bir asistansın.\nKullanıcının markete girip alışverişe başlamaya hazır olup olmadığını anlamaya çalışıyoruz.\n\nKARAR VER:\n- Kullanıcı hazır olduğunu veya başlamak istediğini belirttiyse → \"ready\": true\n- Değilse → \"ready\": false\n\nSADECE şu JSON formatında yanıt ver, başka hiçbir şey yazma:\n{\n  \"ready\": <true veya false>,\n  \"response\": \"kullanıcıya verilecek kısa Türkçe yanıt\"\n}\n\nready true ise response: \"Harika, hadi başlayalım!\"\nready false ise response: başlamasını isteyen nazik bir cümle`;\n      llmUserPrompt = userInput;\n    }\n    break;\n\n  default:\n    session.subState = 'INIT';\n    response = 'Merhaba! Bugün listende kaç ürün var? 2 mi 3 mü?';\n}\n\nsessions[sessionId] = session;\nreturn [{ json: { response, needsLLM, llmSystemPrompt, llmUserPrompt, session, sessionId } }];\n"
+      },
+      "id": "2c936af4-a4ef-4dbd-b2ea-7d6f16955332",
+      "name": "State0_Onboarding",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalize(str) {\n  return str.toLowerCase()\n    .replace(/ş/g, 's').replace(/ı/g, 'i').replace(/ö/g, 'o')\n    .replace(/ü/g, 'u').replace(/ç/g, 'c').replace(/ğ/g, 'g')\n    .replace(/[^a-z0-9\\s]/g, '').trim();\n}\nfunction levenshtein(a, b) {\n  const m = a.length, n = b.length;\n  const dp = Array.from({ length: m + 1 }, (_, i) => [i]);\n  for (let j = 0; j <= n; j++) dp[0][j] = j;\n  for (let i = 1; i <= m; i++)\n    for (let j = 1; j <= n; j++)\n      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);\n  return dp[m][n];\n}\nfunction dynamicTolerance(word) {\n  const len = word.length;\n  if (len <= 3) return 0; if (len <= 5) return 1; if (len <= 8) return 2; return 3;\n}\nfunction substringScore(input, keyword) {\n  if (input.includes(keyword)) return 1.0;\n  const minLen = Math.floor(keyword.length * 0.6);\n  for (let i = 0; i <= keyword.length - minLen; i++)\n    if (input.includes(keyword.slice(i, i + minLen))) return 0.7;\n  return 0;\n}\nfunction fuzzyMatch(input, keywords) {\n  const normInput = normalize(input);\n  const inputWords = normInput.split(/\\s+/);\n  for (const kw of keywords) {\n    const normKw = normalize(kw);\n    const kwWords = normKw.split(/\\s+/);\n    if (normInput.includes(normKw)) return true;\n    if (substringScore(normInput, normKw) >= 0.7) return true;\n    let matched = 0;\n    for (const kwWord of kwWords) {\n      const tol = dynamicTolerance(kwWord);\n      for (const inputWord of inputWords)\n        if (levenshtein(inputWord, kwWord) <= tol) { matched++; break; }\n    }\n    if (matched / kwWords.length >= 0.7) return true;\n  }\n  return false;\n}\n\n// ============================================================\n// STATE 1 - SÜT ARAMA VE SEPETE EKLEME\n// ============================================================\nconst sessions = $getWorkflowStaticData('global');\nconst raw = $input.first().json;\nconst sessionId = raw.sessionId;\nconst userInput = String(raw.userInput || '').trim();\nconst session = JSON.parse(JSON.stringify(raw.session || {}));\n\nlet response = '';\nlet needsLLM = false;\nlet llmSystemPrompt = '';\nlet llmUserPrompt = '';\n\nconst isTimeout = userInput === '__timeout__';\nconst item = 'süt';\n\nif (isTimeout) {\n  session.timeoutCount = (session.timeoutCount || 0) + 1;\n} else if (userInput !== '') {\n  session.timeoutCount = 0;\n}\n\nswitch (session.subState) {\n\n  case 'INIT':\n    response = `İlk ürün süt. Şu anda hangi reyondasın?`;\n    session.subState = 'WAITING_AISLE';\n    session.timeoutCount = 0;\n    break;\n\n  case 'WAITING_AISLE':\n    if (isTimeout) {\n      // Çoğu durumda timeout 3 defa deneniyordu ancak kurala göre burada 10sn bekleyince direkt State 4:\n      session.notFoundItem = item;\n      session.previousState = 1;\n      session.currentState = 4;\n      session.subState = 'EMOTION_REG';\n      response = `Cevap alamadım. Sanırım süt reyonunu bulamadık, sorun değil birlikte çözeriz.`;\n      break;\n    }\n\n    needsLLM = true;\n    llmSystemPrompt = `Sen destekleyici bir asistansın. Kullanıcıya \"Şu anda hangi reyondasın?\" diye sorduk (Hedef: Süt reyonu).\nKullanıcının mesajını analiz et:\n1. Süt reyonunda olduğunu (evet, süt, reyondayım, buradayım vb.) belirtiyorsa:\n   - status: \"in_aisle\"\n   - response: \"Harika, ürünü buldun. Şimdi sepete koy. Koydun mu?\"\n   - nextState: 1\n   - nextSubState: \"WAITING_BASKET_CONFIRM\"\n2. Bulamadığını, olmadığını veya başka yerde olduğunu (\"hayır\", \"yok\", \"bulamadım\") belirtiyorsa:\n   - status: \"not_found\"\n   - response: \"\" \n   - nextState: 4\n   - nextSubState: \"EMOTION_REG\"\n3. Alakasız veya anlaşılmayan bir cevap veriyorsa:\n   - status: \"irrelevant\"\n   - response: \"Süt reyonunda mısın? Lütfen 'evet' veya 'hayır' şeklinde cevap ver.\"\n   - nextState: 1\n   - nextSubState: \"WAITING_AISLE\"\n\nSADECE JSON dön:\n{\n  \"status\": \"<in_aisle | not_found | irrelevant>\",\n  \"response\": \"<vereceğin yanıt>\",\n  \"nextState\": <num>,\n  \"nextSubState\": \"<state_adi>\"\n}`;\n    llmUserPrompt = userInput;\n    break;\n\n  case 'WAITING_BASKET_CONFIRM':\n    if (isTimeout) {\n      response = `Sütü sepete koydun mu?`;\n      break;\n    }\n\n    if (fuzzyMatch(userInput, ['evet', 'koydum', 'aldim', 'attim'])) {\n      session.foundItems = session.foundItems || [];\n      if (!session.foundItems.includes(item)) session.foundItems.push(item);\n      session.currentState = 2; // State 2'ye geç\n      session.subState = 'INIT';\n      response = `Süper, sütü sepete ekledin! Şimdi sıradaki ürüne geçiyoruz.`; \n    } else if (fuzzyMatch(userInput, ['hayir', 'koymadim', 'yok', 'bekle'])) {\n      session.subState = 'WAITING_TAMAM';\n      session.timeoutCount = 0;\n      response = `Lütfen sütü sepete koy ve 'tamam' de.`;\n    } else {\n      needsLLM = true;\n      llmSystemPrompt = `Kullanıcıya sütü sepete koyup koymadığını sorduk: \"Koydun mu?\"\nMesajını analiz et:\n1. Koyduğunu (evet, koydum vb.) belirtiyorsa:\n   - response: \"Süper, sütü sepete ekledin! Şimdi sıradaki ürüne geçiyoruz.\", nextState: 2, nextSubState: \"INIT\", itemAction: \"found\"\n2. Koymadığını (hayır, bekle vb.) belirtiyorsa:\n   - response: \"Lütfen sütü sepete koy ve 'tamam' de.\", nextState: 1, nextSubState: \"WAITING_TAMAM\"\n3. Belirsizse:\n   - response: \"Sütü sepete koydun mu? Lütfen 'evet' veya 'hayır' şeklinde cevap ver.\", nextState: 1, nextSubState: \"WAITING_BASKET_CONFIRM\"\n\nSADECE JSON dön:\n{ \"response\": \"<yanıt>\", \"nextState\": <num>, \"nextSubState\": \"...\", \"itemAction\": \"<found | null>\" }`;\n      llmUserPrompt = userInput;\n    }\n    break;\n\n  case 'WAITING_TAMAM':\n    if (isTimeout) {\n      if (session.timeoutCount >= 3) {\n        // En fazla 3 kez tekrar edilir; hala cevap yoksa State 4'e geçilir\n        session.notFoundItem = item;\n        session.previousState = 1;\n        session.currentState = 4;\n        session.subState = 'EMOTION_REG';\n        response = `Sütü sepete atamadık sanırım. Sorun değil, gel buna beraber bir çözüm bulalım.`;\n      } else {\n        response = `Lütfen sütü sepete koy ve 'tamam' de.`;\n      }\n      break;\n    }\n\n    if (fuzzyMatch(userInput, ['tamam', 'ok', 'koydum', 'evet', 'aldim'])) {\n      session.foundItems = session.foundItems || [];\n      if (!session.foundItems.includes(item)) session.foundItems.push(item);\n      session.currentState = 2;\n      session.subState = 'INIT';\n      response = `Süper, sütü sepete ekledin! Şimdi sıradaki ürüne geçelim.`;\n    } else {\n      needsLLM = true;\n      llmSystemPrompt = `Kullanıcıya \"Lütfen sütü sepete koy ve 'tamam' de.\" komutunu verdik.\n1. Başardığını (\"tamam\", \"koydum\", \"hallettim\" vb.) anlatıyorsa:\n   - response: \"Süper, sütü sepete ekledin! Şimdi sıradaki ürüne geçelim.\", nextState: 2, nextSubState: \"INIT\", itemAction: \"found\"\n2. Belirsiz, alakasız veya yapmadığını ifade ediyorsa:\n   - response: \"Lütfen sütü sepete koy ve 'tamam' de.\", nextState: 1, nextSubState: \"WAITING_TAMAM\"\n\nSADECE JSON dön:\n{ \"response\": \"<yanıt>\", \"nextState\": <num>, \"nextSubState\": \"...\", \"itemAction\": \"<found | null>\" }`;\n      llmUserPrompt = userInput;\n    }\n    break;\n\n  default:\n    session.subState = 'WAITING_AISLE';\n    response = `İlk ürün süt. Şu anda hangi reyondasın?`;\n    break;\n}\n\n// Eğer State 4'e manuel (fuzzy match veya timeout ile) LLM'siz geçiş yaptıysak notFoundItem kaydedelim\nif (!needsLLM && session.currentState === 4) {\n  session.notFoundItem = item;\n  session.previousState = 1;\n}\n\nsessions[sessionId] = session;\nreturn [{ json: { response, needsLLM, llmSystemPrompt, llmUserPrompt, session, sessionId } }];\n"
+      },
+      "id": "34c1cca0-7fc3-47da-ad7f-bcdae1d18e18",
+      "name": "State1_FindItem1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalize(str) {\n  return str.toLowerCase()\n    .replace(/ş/g, 's').replace(/ı/g, 'i').replace(/ö/g, 'o')\n    .replace(/ü/g, 'u').replace(/ç/g, 'c').replace(/ğ/g, 'g')\n    .replace(/[^a-z0-9\\s]/g, '').trim();\n}\nfunction levenshtein(a, b) {\n  const m = a.length, n = b.length;\n  const dp = Array.from({ length: m + 1 }, (_, i) => [i]);\n  for (let j = 0; j <= n; j++) dp[0][j] = j;\n  for (let i = 1; i <= m; i++)\n    for (let j = 1; j <= n; j++)\n      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);\n  return dp[m][n];\n}\nfunction dynamicTolerance(word) {\n  const len = word.length;\n  if (len <= 3) return 0; if (len <= 5) return 1; if (len <= 8) return 2; return 3;\n}\nfunction substringScore(input, keyword) {\n  if (input.includes(keyword)) return 1.0;\n  const minLen = Math.floor(keyword.length * 0.6);\n  for (let i = 0; i <= keyword.length - minLen; i++)\n    if (input.includes(keyword.slice(i, i + minLen))) return 0.7;\n  return 0;\n}\nfunction fuzzyMatch(input, keywords) {\n  const normInput = normalize(input);\n  const inputWords = normInput.split(/\\s+/);\n  for (const kw of keywords) {\n    const normKw = normalize(kw);\n    const kwWords = normKw.split(/\\s+/);\n    if (normInput.includes(normKw)) return true;\n    if (substringScore(normInput, normKw) >= 0.7) return true;\n    let matched = 0;\n    for (const kwWord of kwWords) {\n      const tol = dynamicTolerance(kwWord);\n      for (const inputWord of inputWords)\n        if (levenshtein(inputWord, kwWord) <= tol) { matched++; break; }\n    }\n    if (matched / kwWords.length >= 0.7) return true;\n  }\n  return false;\n}\n\n// ============================================================\n// STATE 2 - İKİNCİ ÜRÜN ARAMA VE SEPETE EKLEME\n// ============================================================\nconst sessions = $getWorkflowStaticData('global');\nconst raw = $input.first().json;\nconst sessionId = raw.sessionId;\nconst userInput = String(raw.userInput || '').trim();\nconst session = JSON.parse(JSON.stringify(raw.session || {}));\n\nlet response = '';\nlet needsLLM = false;\nlet llmSystemPrompt = '';\nlet llmUserPrompt = '';\n\nconst isTimeout = userInput === '__timeout__';\nconst item = session.productList?.[1] || 'yumurta';\nconst currentStateNum = 2;\n// 3 ürün varsa State 3'e, 2 ürün varsa State 5'e (Kasaya) geç.\nconst nextStateNum = (session.productList && session.productList.length >= 3) ? 3 : 5; \n\nif (isTimeout) {\n  session.timeoutCount = (session.timeoutCount || 0) + 1;\n} else if (userInput !== '') {\n  session.timeoutCount = 0;\n}\n\nswitch (session.subState) {\n\n  case 'INIT':\n    response = `İkinci ürün ${item}. Şu anda hangi reyondasın?`;\n    session.subState = 'WAITING_AISLE';\n    session.timeoutCount = 0;\n    break;\n\n  case 'WAITING_AISLE':\n    if (isTimeout) {\n      session.notFoundItem = item;\n      session.previousState = currentStateNum;\n      session.currentState = 4;\n      session.subState = 'EMOTION_REG';\n      response = `Cevap alamadım. Sanırım ${item} reyonunu bulamadık, sorun değil birlikte çözeriz.`;\n      break;\n    }\n\n    needsLLM = true;\n    llmSystemPrompt = `Sen destekleyici bir asistansın. Kullanıcıya \"Şu anda hangi reyondasın?\" diye sorduk (Hedef: ${item} reyonu).\nKullanıcının mesajını analiz et:\n1. ${item} reyonunda olduğunu (evet, yumurta, reyondayım, buradayım vb.) belirtiyorsa:\n   - status: \"in_aisle\"\n   - response: \"Harika, ürünü buldun. Şimdi sepete koy. Koydun mu?\"\n   - nextState: ${currentStateNum}\n   - nextSubState: \"WAITING_BASKET_CONFIRM\"\n2. Bulamadığını, olmadığını veya başka yerde olduğunu (\"hayır\", \"yok\", \"bulamadım\") belirtiyorsa:\n   - status: \"not_found\"\n   - response: \"\" \n   - nextState: 4\n   - nextSubState: \"EMOTION_REG\"\n3. Alakasız veya anlaşılmayan bir cevap veriyorsa:\n   - status: \"irrelevant\"\n   - response: \"${item} reyonunda mısın? Lütfen 'evet' veya 'hayır' şeklinde cevap ver.\"\n   - nextState: ${currentStateNum}\n   - nextSubState: \"WAITING_AISLE\"\n\nSADECE JSON dön:\n{\n  \"status\": \"<in_aisle | not_found | irrelevant>\",\n  \"response\": \"<vereceğin yanıt>\",\n  \"nextState\": <num>,\n  \"nextSubState\": \"<state_adi>\"\n}`;\n    llmUserPrompt = userInput;\n    break;\n\n  case 'WAITING_BASKET_CONFIRM':\n    if (isTimeout) {\n      response = `${item} ürününü sepete koydun mu?`;\n      break;\n    }\n\n    if (fuzzyMatch(userInput, ['evet', 'koydum', 'aldim', 'attim'])) {\n      session.foundItems = session.foundItems || [];\n      if (!session.foundItems.includes(item)) session.foundItems.push(item);\n      session.currentState = nextStateNum;\n      session.subState = 'INIT';\n      response = `Süper, ${item} ürününü sepete ekledin! Şimdi ${nextStateNum === 5 ? 'kasaya geçebiliriz.' : 'sıradaki ürüne geçiyoruz.'}`; \n    } else if (fuzzyMatch(userInput, ['hayir', 'koymadim', 'yok', 'bekle'])) {\n      session.subState = 'WAITING_TAMAM';\n      session.timeoutCount = 0;\n      response = `Lütfen ${item} ürününü sepete koy ve 'tamam' de.`;\n    } else {\n      needsLLM = true;\n      llmSystemPrompt = `Kullanıcıya ${item} ürününü sepete koyup koymadığını sorduk: \"Koydun mu?\"\nMesajını analiz et:\n1. Koyduğunu (evet, koydum vb.) belirtiyorsa:\n   - response: \"Süper, ${item} ürününü sepete ekledin! Şimdi ${nextStateNum === 5 ? 'kasaya geçebiliriz.' : 'sıradaki ürüne geçiyoruz.'}\", nextState: ${nextStateNum}, nextSubState: \"INIT\", itemAction: \"found\"\n2. Koymadığını (hayır, bekle vb.) belirtiyorsa:\n   - response: \"Lütfen ${item} ürününü sepete koy ve 'tamam' de.\", nextState: ${currentStateNum}, nextSubState: \"WAITING_TAMAM\"\n3. Belirsizse:\n   - response: \"${item} ürününü sepete koydun mu? Lütfen 'evet' veya 'hayır' şeklinde cevap ver.\", nextState: ${currentStateNum}, nextSubState: \"WAITING_BASKET_CONFIRM\"\n\nSADECE JSON dön:\n{ \"response\": \"<yanıt>\", \"nextState\": <num>, \"nextSubState\": \"...\", \"itemAction\": \"<found | null>\" }`;\n      llmUserPrompt = userInput;\n    }\n    break;\n\n  case 'WAITING_TAMAM':\n    if (isTimeout) {\n      if (session.timeoutCount >= 3) {\n        session.notFoundItem = item;\n        session.previousState = currentStateNum;\n        session.currentState = 4;\n        session.subState = 'EMOTION_REG';\n        response = `${item} ürününü sepete atamadık sanırım. Sorun değil, gel buna beraber bir çözüm bulalım.`;\n      } else {\n        response = `Lütfen ${item} ürününü sepete koy ve 'tamam' de.`;\n      }\n      break;\n    }\n\n    if (fuzzyMatch(userInput, ['tamam', 'ok', 'koydum', 'evet', 'aldim'])) {\n      session.foundItems = session.foundItems || [];\n      if (!session.foundItems.includes(item)) session.foundItems.push(item);\n      session.currentState = nextStateNum;\n      session.subState = 'INIT';\n      response = `Süper, ${item} ürününü sepete ekledin! Şimdi ${nextStateNum === 5 ? 'kasaya geçebiliriz.' : 'sıradaki ürüne geçiyoruz.'}`;\n    } else {\n      needsLLM = true;\n      llmSystemPrompt = `Kullanıcıya \"Lütfen ${item} ürününü sepete koy ve 'tamam' de.\" komutunu verdik.\n1. Başardığını (\"tamam\", \"koydum\", \"hallettim\" vb.) anlatıyorsa:\n   - response: \"Süper, ${item} ürününü sepete ekledin! Şimdi ${nextStateNum === 5 ? 'kasaya geçebiliriz.' : 'sıradaki ürüne geçiyoruz.'}\", nextState: ${nextStateNum}, nextSubState: \"INIT\", itemAction: \"found\"\n2. Belirsiz, alakasız veya yapmadığını ifade ediyorsa:\n   - response: \"Lütfen ${item} ürününü sepete koy ve 'tamam' de.\", nextState: ${currentStateNum}, nextSubState: \"WAITING_TAMAM\"\n\nSADECE JSON dön:\n{ \"response\": \"<yanıt>\", \"nextState\": <num>, \"nextSubState\": \"...\", \"itemAction\": \"<found | null>\" }`;\n      llmUserPrompt = userInput;\n    }\n    break;\n\n  default:\n    session.subState = 'WAITING_AISLE';\n    response = `İkinci ürün ${item}. Şu anda hangi reyondasın?`;\n    break;\n}\n\nif (!needsLLM && session.currentState === 4) {\n  session.notFoundItem = item;\n  session.previousState = currentStateNum;\n}\n\nsessions[sessionId] = session;\nreturn [{ json: { response, needsLLM, llmSystemPrompt, llmUserPrompt, session, sessionId } }];\n"
+      },
+      "id": "6cac6259-5785-449b-8c52-be92405bc067",
+      "name": "State2_FindItem2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ response: $json.response, currentState: $json.currentState, subState: $json.subState, sessionId: $json.sessionId, timestamp: $json.timestamp }) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "fd6f5988-567f-4b91-8c0e-6344c148b76a",
+      "name": "RespondToWebhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1664,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalize(str) {\n  return str.toLowerCase()\n    .replace(/ş/g, 's').replace(/ı/g, 'i').replace(/ö/g, 'o')\n    .replace(/ü/g, 'u').replace(/ç/g, 'c').replace(/ğ/g, 'g')\n    .replace(/[^a-z0-9\\s]/g, '').trim();\n}\nfunction levenshtein(a, b) {\n  const m = a.length, n = b.length;\n  const dp = Array.from({ length: m + 1 }, (_, i) => [i]);\n  for (let j = 0; j <= n; j++) dp[0][j] = j;\n  for (let i = 1; i <= m; i++)\n    for (let j = 1; j <= n; j++)\n      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);\n  return dp[m][n];\n}\nfunction dynamicTolerance(word) {\n  const len = word.length;\n  if (len <= 3) return 0; if (len <= 5) return 1; if (len <= 8) return 2; return 3;\n}\nfunction substringScore(input, keyword) {\n  if (input.includes(keyword)) return 1.0;\n  const minLen = Math.floor(keyword.length * 0.6);\n  for (let i = 0; i <= keyword.length - minLen; i++)\n    if (input.includes(keyword.slice(i, i + minLen))) return 0.7;\n  return 0;\n}\nfunction fuzzyMatch(input, keywords) {\n  const normInput = normalize(input);\n  const inputWords = normInput.split(/\\s+/);\n  for (const kw of keywords) {\n    const normKw = normalize(kw);\n    const kwWords = normKw.split(/\\s+/);\n    if (normInput.includes(normKw)) return true;\n    if (substringScore(normInput, normKw) >= 0.7) return true;\n    let matched = 0;\n    for (const kwWord of kwWords) {\n      const tol = dynamicTolerance(kwWord);\n      for (const inputWord of inputWords)\n        if (levenshtein(inputWord, kwWord) <= tol) { matched++; break; }\n    }\n    if (matched / kwWords.length >= 0.7) return true;\n  }\n  return false;\n}\n\n// ============================================================\n// STATE 3 - ÜÇÜNCÜ ÜRÜN ARAMA VE SEPETE EKLEME\n// ============================================================\nconst sessions = $getWorkflowStaticData('global');\nconst raw = $input.first().json;\nconst sessionId = raw.sessionId;\nconst userInput = String(raw.userInput || '').trim();\nconst session = JSON.parse(JSON.stringify(raw.session || {}));\n\nlet response = '';\nlet needsLLM = false;\nlet llmSystemPrompt = '';\nlet llmUserPrompt = '';\n\nconst isTimeout = userInput === '__timeout__';\nconst item = session.productList?.[2] || 'ekmek';\nconst currentStateNum = 3;\nconst nextStateNum = 5; // Son ürün olduğu için direk Kasaya (State 5) geçer\n\nif (isTimeout) {\n  session.timeoutCount = (session.timeoutCount || 0) + 1;\n} else if (userInput !== '') {\n  session.timeoutCount = 0;\n}\n\nswitch (session.subState) {\n\n  case 'INIT':\n    response = `Üçüncü ürün ${item}. Şu anda hangi reyondasın?`;\n    session.subState = 'WAITING_AISLE';\n    session.timeoutCount = 0;\n    break;\n\n  case 'WAITING_AISLE':\n    if (isTimeout) {\n      session.notFoundItem = item;\n      session.previousState = currentStateNum;\n      session.currentState = 4;\n      session.subState = 'EMOTION_REG';\n      response = `Cevap alamadım. Sanırım ${item} reyonunu bulamadık, sorun değil birlikte çözeriz.`;\n      break;\n    }\n\n    needsLLM = true;\n    llmSystemPrompt = `Sen destekleyici bir asistansın. Kullanıcıya \"Şu anda hangi reyondasın?\" diye sorduk (Hedef: ${item} reyonu).\nKullanıcının mesajını analiz et:\n1. ${item} reyonunda olduğunu (evet, ekmek, fırın, reyondayım, buradayım vb.) belirtiyorsa:\n   - status: \"in_aisle\"\n   - response: \"Harika, ürünü buldun. Şimdi sepete koy. Koydun mu?\"\n   - nextState: ${currentStateNum}\n   - nextSubState: \"WAITING_BASKET_CONFIRM\"\n2. Bulamadığını, olmadığını veya başka yerde olduğunu (\"hayır\", \"yok\", \"bulamadım\") belirtiyorsa:\n   - status: \"not_found\"\n   - response: \"\" \n   - nextState: 4\n   - nextSubState: \"EMOTION_REG\"\n3. Alakasız veya anlaşılmayan bir cevap veriyorsa:\n   - status: \"irrelevant\"\n   - response: \"${item} reyonunda mısın? Lütfen 'evet' veya 'hayır' şeklinde cevap ver.\"\n   - nextState: ${currentStateNum}\n   - nextSubState: \"WAITING_AISLE\"\n\nSADECE JSON dön:\n{\n  \"status\": \"<in_aisle | not_found | irrelevant>\",\n  \"response\": \"<vereceğin yanıt>\",\n  \"nextState\": <num>,\n  \"nextSubState\": \"<state_adi>\"\n}`;\n    llmUserPrompt = userInput;\n    break;\n\n  case 'WAITING_BASKET_CONFIRM':\n    if (isTimeout) {\n      response = `${item} ürününü sepete koydun mu?`;\n      break;\n    }\n\n    if (fuzzyMatch(userInput, ['evet', 'koydum', 'aldim', 'attim'])) {\n      session.foundItems = session.foundItems || [];\n      if (!session.foundItems.includes(item)) session.foundItems.push(item);\n      session.currentState = nextStateNum;\n      session.subState = 'INIT';\n      response = `Süper, listendeki tüm ürünleri sepete ekledin! Artık kasaya geçebiliriz.`; \n    } else if (fuzzyMatch(userInput, ['hayir', 'koymadim', 'yok', 'bekle'])) {\n      session.subState = 'WAITING_TAMAM';\n      session.timeoutCount = 0;\n      response = `Lütfen ${item} ürününü sepete koy ve 'tamam' de.`;\n    } else {\n      needsLLM = true;\n      llmSystemPrompt = `Kullanıcıya ${item} ürününü sepete koyup koymadığını sorduk: \"Koydun mu?\"\nMesajını analiz et:\n1. Koyduğunu (evet, koydum vb.) belirtiyorsa:\n   - response: \"Süper, listendeki tüm ürünleri sepete ekledin! Artık kasaya geçebiliriz.\", nextState: ${nextStateNum}, nextSubState: \"INIT\", itemAction: \"found\"\n2. Koymadığını (hayır, bekle vb.) belirtiyorsa:\n   - response: \"Lütfen ${item} ürününü sepete koy ve 'tamam' de.\", nextState: ${currentStateNum}, nextSubState: \"WAITING_TAMAM\"\n3. Belirsizse:\n   - response: \"${item} ürününü sepete koydun mu? Lütfen 'evet' veya 'hayır' şeklinde cevap ver.\", nextState: ${currentStateNum}, nextSubState: \"WAITING_BASKET_CONFIRM\"\n\nSADECE JSON dön:\n{ \"response\": \"<yanıt>\", \"nextState\": <num>, \"nextSubState\": \"...\", \"itemAction\": \"<found | null>\" }`;\n      llmUserPrompt = userInput;\n    }\n    break;\n\n  case 'WAITING_TAMAM':\n    if (isTimeout) {\n      if (session.timeoutCount >= 3) {\n        session.notFoundItem = item;\n        session.previousState = currentStateNum;\n        session.currentState = 4;\n        session.subState = 'EMOTION_REG';\n        response = `${item} ürününü sepete atamadık sanırım. Sorun değil, gel buna beraber bir çözüm bulalım.`;\n      } else {\n        response = `Lütfen ${item} ürününü sepete koy ve 'tamam' de.`;\n      }\n      break;\n    }\n\n    if (fuzzyMatch(userInput, ['tamam', 'ok', 'koydum', 'evet', 'aldim'])) {\n      session.foundItems = session.foundItems || [];\n      if (!session.foundItems.includes(item)) session.foundItems.push(item);\n      session.currentState = nextStateNum;\n      session.subState = 'INIT';\n      response = `Süper, listendeki tüm ürünleri sepete ekledin! Artık kasaya geçebiliriz.`;\n    } else {\n      needsLLM = true;\n      llmSystemPrompt = `Kullanıcıya \"Lütfen ${item} ürününü sepete koy ve 'tamam' de.\" komutunu verdik.\n1. Başardığını (\"tamam\", \"koydum\", \"hallettim\" vb.) anlatıyorsa:\n   - response: \"Süper, listendeki tüm ürünleri sepete ekledin! Artık kasaya geçebiliriz.\", nextState: ${nextStateNum}, nextSubState: \"INIT\", itemAction: \"found\"\n2. Belirsiz, alakasız veya yapmadığını ifade ediyorsa:\n   - response: \"Lütfen ${item} ürününü sepete koy ve 'tamam' de.\", nextState: ${currentStateNum}, nextSubState: \"WAITING_TAMAM\"\n\nSADECE JSON dön:\n{ \"response\": \"<yanıt>\", \"nextState\": <num>, \"nextSubState\": \"...\", \"itemAction\": \"<found | null>\" }`;\n      llmUserPrompt = userInput;\n    }\n    break;\n\n  default:\n    session.subState = 'WAITING_AISLE';\n    response = `Üçüncü ürün ${item}. Şu anda hangi reyondasın?`;\n    break;\n}\n\nif (!needsLLM && session.currentState === 4) {\n  session.notFoundItem = item;\n  session.previousState = currentStateNum;\n}\n\nsessions[sessionId] = session;\nreturn [{ json: { response, needsLLM, llmSystemPrompt, llmUserPrompt, session, sessionId } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        352
+      ],
+      "id": "42344178-f260-465b-ac40-b22ce781f2ae",
+      "name": "State3_FindItem3"
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalize(str) {\n  return str.toLowerCase()\n    .replace(/ş/g, 's').replace(/ı/g, 'i').replace(/ö/g, 'o')\n    .replace(/ü/g, 'u').replace(/ç/g, 'c').replace(/ğ/g, 'g')\n    .replace(/[^a-z0-9\\s]/g, '').trim();\n}\nfunction levenshtein(a, b) {\n  const m = a.length, n = b.length;\n  const dp = Array.from({ length: m + 1 }, (_, i) => [i]);\n  for (let j = 0; j <= n; j++) dp[0][j] = j;\n  for (let i = 1; i <= m; i++)\n    for (let j = 1; j <= n; j++)\n      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);\n  return dp[m][n];\n}\nfunction dynamicTolerance(word) {\n  const len = word.length;\n  if (len <= 3) return 0; if (len <= 5) return 1; if (len <= 8) return 2; return 3;\n}\nfunction substringScore(input, keyword) {\n  if (input.includes(keyword)) return 1.0;\n  const minLen = Math.floor(keyword.length * 0.6);\n  for (let i = 0; i <= keyword.length - minLen; i++)\n    if (input.includes(keyword.slice(i, i + minLen))) return 0.7;\n  return 0;\n}\nfunction fuzzyMatch(input, keywords) {\n  const normInput = normalize(input);\n  const inputWords = normInput.split(/\\s+/);\n  for (const kw of keywords) {\n    const normKw = normalize(kw);\n    const kwWords = normKw.split(/\\s+/);\n    if (normInput.includes(normKw)) return true;\n    if (substringScore(normInput, normKw) >= 0.7) return true;\n    let matched = 0;\n    for (const kwWord of kwWords) {\n      const tol = dynamicTolerance(kwWord);\n      for (const inputWord of inputWords)\n        if (levenshtein(inputWord, kwWord) <= tol) { matched++; break; }\n    }\n    if (matched / kwWords.length >= 0.7) return true;\n  }\n  return false;\n}\n\n// ============================================================\n// STATE 4 - EXCEPTION HANDLING (Ürün Bulunamadı)\n// ============================================================\nconst sessions = $getWorkflowStaticData('global');\nconst raw = $input.first().json;\nconst sessionId = raw.sessionId;\nconst userInput = String(raw.userInput || '').trim();\nconst session = JSON.parse(JSON.stringify(raw.session || {}));\n\nlet response = '';\nlet needsLLM = false;\nlet llmSystemPrompt = '';\nlet llmUserPrompt = '';\n\nconst isTimeout = userInput === '__timeout__';\nconst item = session.notFoundItem || 'ürün';\n\nfunction getNextState(session) {\n  const prev = session.previousState || 1;\n  if (prev === 1) return 2;\n  if (prev === 2) return (session.productList && session.productList.length >= 3) ? 3 : 5;\n  if (prev === 3) return 5;\n  return 5;\n}\n\nif (isTimeout) {\n  session.timeoutCount = (session.timeoutCount || 0) + 1;\n} else if (userInput !== '') {\n  session.timeoutCount = 0;\n}\n\nif (!session.itemStatuses) session.itemStatuses = {};\nif (session.exceptionAttempts === undefined) session.exceptionAttempts = 0;\n\nswitch (session.subState) {\n\n  case 'EMOTION_REG':\n    response = `Bu çok normal, panik yapmaya gerek yok. Birlikte çözeriz. 😊\\nDerin bir nefes alalım:\\n1... 🌬️\\n2... Harika...\\n3... Süper!\\n\\nŞimdi problemi çözmek için ne yapmak istersin?\\nA) Alternatif ürün (örneğin 1L yoksa iki tane 0.5L)\\nB) Başka markaya geç\\nC) Görevliye sor\\nD) Başka reyon veya koridor dene`;\n    session.subState = 'WAITING_CHOICE';\n    session.exceptionAttempts = 0;\n    break;\n\n  case 'WAITING_CHOICE':\n    if (isTimeout) {\n      response = `Hala buradayım. Hangisini deneyelim?\\nA) Alternatif ürün\\nB) Başka marka\\nC) Görevliye sor\\nD) Başka reyon`;\n      break;\n    }\n\n    let choiceResponse = \"\";\n    session.currentChoice = \"\";\n\n    if (fuzzyMatch(userInput, ['a', 'alternatif', 'baska cesit', 'kucuk', 'buyuk'])) {\n      session.currentChoice = \"A (Alternatif)\";\n      choiceResponse = `Harika bir problem çözme yöntemi! ${item} için farklı bir boyut veya benzer bir ürün arayalım. Etrafında buna benzer ne var?`;\n    } else if (fuzzyMatch(userInput, ['b', 'marka', 'baska marka', 'diger marka'])) {\n      session.currentChoice = \"B (Başka Marka)\";\n      choiceResponse = `Çok mantıklı. ${item} için her zaman aldığımız marka yoksa, raftaki diğer temiz markalardan birini seçebiliriz. Hangisini gözüne kestirdin?`;\n    } else if (fuzzyMatch(userInput, ['c', 'gorevli', 'sor', 'personel', 'yardim', 'soralim'])) {\n      session.currentChoice = \"C (Görevliye Sor)\";\n      choiceResponse = `Süper! Görevliler yardım etmek için buradalar. Yaklaş ve şöyle de: \"Affedersiniz, ${item} ürününü nerede bulabilirim?\"\\nSorduğunda bana ne dediklerini söyle.`;\n    } else if (fuzzyMatch(userInput, ['d', 'reyon', 'koridor', 'baska yer'])) {\n      session.currentChoice = \"D (Başka Reyon)\";\n      choiceResponse = `Olabilir, belki yeri değişmiştir. Yan koridora veya indirim sepetlerinin olduğu tarafa doğru kısa bir keşif yapalım. Görebildin mi?`;\n    } else {\n      needsLLM = true;\n      llmSystemPrompt = `Sen destekleyici bir asistansın. Kullanıcının ${item} bulamadığı için sunduğumuz seçeneklerden (A: Alternatif, B: Başka marka, C: Görevliye sor, D: Başka reyon) hangisini seçtiğini anla.\nSADECE JSON dön:\n{\n  \"choice\": \"<A | B | C | D | unknown>\",\n  \"response\": \"<Seçime uygun adım atmasını söyleyen çok kısa 1 cümlelik yanıt. Örn: A seçtiyse alternatif bulmasını söyle, C seçtiyse görevliye ne soracağını öğret.>\",\n  \"nextState\": 4,\n  \"nextSubState\": \"<unknown ise WAITING_CHOICE, değilse DOING_CHOICE>\"\n}`;\n      llmUserPrompt = userInput;\n      break;\n    }\n\n    response = choiceResponse;\n    session.subState = 'DOING_CHOICE';\n    break;\n\n  case 'DOING_CHOICE':\n    if (isTimeout) {\n      if (session.timeoutCount >= 2) {\n        response = `Nasıl gidiyor? Bir gelişme var mı, yoksa hala bulamadık mı?`;\n      } else {\n        response = `Acele etmene gerek yok, seçeneklere bak ve bulduğunda bana haber ver.`;\n      }\n      break;\n    }\n\n    needsLLM = true;\n    const attemptsLeft = 1 - session.exceptionAttempts;\n    llmSystemPrompt = `Sen destekleyici bir asistansın. Kullanıcı (${item}) ürünü için bir çözüm yöntemi (${session.currentChoice || 'belirsiz'}) deniyor.\nYanıtını analiz et:\n1. Ürünü/alternatifi BULDU ve aldıysa:\n   - \"response\": \"Harika iş çıkardın! Kriz anında harika problem çözdün. Şimdi sıradaki adıma geçelim.\"\n   - \"nextState\": ${getNextState(session)}\n   - \"nextSubState\": \"INIT\"\n   - \"itemAction\": \"substituted\"\n   - \"incrementAttempts\": false\n\n2. Hala BULAMADIYSA (veya denedim olmadı diyorsa):\n   ${attemptsLeft > 0 ? \n     `\n   - \"response\": \"Eline sağlık, en azından denedik. Hala başka bir yolumuz var. Diğer seçeneklerden (Alternatif, Başka Marka, Görevliye Sor, Başka Reyon) birini deneyelim mi?\"\n   - \"nextState\": 4\n   - \"nextSubState\": \"WAITING_CHOICE\"\n   - \"itemAction\": null\n   - \"incrementAttempts\": true\n     ` : \n     `\n   - \"response\": \"Sorun değil, elimizden geleni yaptık! Plan B'ye geçelim: Bu ürünü listeden tamamen çıkarıp yolumuza devam edelim mi, yoksa alışverişi bitirip başka markete mi geçmek istersin?\"\n   - \"nextState\": 4\n   - \"nextSubState\": \"PLAN_B\"\n   - \"itemAction\": null\n   - \"incrementAttempts\": true\n     `\n   }\n\n3. Süreç devam ediyorsa veya konu dışı bir durumsa:\n   - \"response\": \"Yanındayım, sonucu bana haber ver.\",\n   - \"nextState\": 4,\n   - \"nextSubState\": \"DOING_CHOICE\",\n   - \"itemAction\": null,\n   - \"incrementAttempts\": false\n\nSADECE JSON dön (başka hiçbir kelime ekleme):\n{\n  \"response\": \"...\",\n  \"nextState\": <num>,\n  \"nextSubState\": \"...\",\n  \"itemAction\": \"<substituted | null>\",\n  \"incrementAttempts\": <true | false>\n}`;\n    llmUserPrompt = userInput;\n    break;\n\n  case 'PLAN_B':\n    if (isTimeout) {\n      response = `Plan B: Bu ürünü listeden çıkarıp kasaya/sıradaki ürüne mi geçelim, yoksa bu ürün için başka markete mi bakalım?`;\n      break;\n    }\n\n    if (fuzzyMatch(userInput, ['1', 'cikar', 'siradaki', 'gec', 'iptal', 'kasaya', 'devam', 'vazgec'])) {\n      session.itemStatuses[item] = 'removed';\n      const nextStr = getNextState(session);\n      session.currentState = nextStr;\n      session.subState = 'INIT';\n      response = `Anlaştık, sildim! Bazen planları değiştirmek çok normaldir. ${nextStr === 5 ? 'Hadi kasaya doğru ilerleyelim.' : 'Sıradaki ürünle devam edelim!'}`;\n    } else if (fuzzyMatch(userInput, ['2', 'baska market', 'market', 'disari', 'cikalim'])) {\n      session.itemStatuses[item] = 'postponed';\n      session.currentState = 5; \n      session.subState = 'INIT';\n      response = `Tamam, bu ürünü başka markete bırakıyoruz (ertelendi). O zaman şu ana kadar aldıklarımızla kasaya gidelim ve ödememizi yapıp çıkalım.`;\n    } else {\n      needsLLM = true;\n      llmSystemPrompt = `Kullanıcıya şunu sorduk: \"Plan B: Bu ürünü listeden çıkarıp devam mı edelim, yoksa başka markete mi geçelim?\"\nYanıtı analiz et.\nÇıkarma/İptal/Devam yönündeyse:\n{ \"response\": \"Anlaştık, sildim! Bazen planları değiştirmek çok normaldir. Sıradaki adıma geçelim.\", \"nextState\": ${getNextState(session)}, \"nextSubState\": \"INIT\", \"itemAction\": \"removed\" }\nBaşka Market yönündeyse:\n{ \"response\": \"Tamam, bunu başka markete bırakıyoruz. Mevcut ürünlerle kasaya ilerleyelim.\", \"nextState\": 5, \"nextSubState\": \"INIT\", \"itemAction\": \"postponed\" }\nAksi halde (anlaşılamadıysa):\n{ \"response\": \"Tam anlayamadım. Ürünü listeden çıkaralım mı, başka markete mi gidelim?\", \"nextState\": 4, \"nextSubState\": \"PLAN_B\", \"itemAction\": null }`;\n      llmUserPrompt = userInput;\n    }\n    break;\n\n  default:\n    session.subState = 'EMOTION_REG';\n    response = `Bu çok normal, panik yapmaya gerek yok. Birlikte çözeriz. 😊\\nDerin bir nefes al: 1-2-3...\\nŞimdi problemi çözmek için ne yapmak istersin?\\nA) Alternatif ürün seç\\nB) Başka markaya geç\\nC) Görevliye sor\\nD) Başka reyon veya koridor dene`;\n    break;\n}\n\nsessions[sessionId] = session;\nreturn [{ json: { response, needsLLM, llmSystemPrompt, llmUserPrompt, session, sessionId } }];\n"
+      },
+      "id": "c9849947-426b-4a68-8054-114b8fc37583",
+      "name": "State4_Exception",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function normalize(str) {\n  return str.toLowerCase()\n    .replace(/ş/g, 's').replace(/ı/g, 'i').replace(/ö/g, 'o')\n    .replace(/ü/g, 'u').replace(/ç/g, 'c').replace(/ğ/g, 'g')\n    .replace(/[^a-z0-9\\s]/g, '').trim();\n}\nfunction levenshtein(a, b) {\n  const m = a.length, n = b.length;\n  const dp = Array.from({ length: m + 1 }, (_, i) => [i]);\n  for (let j = 0; j <= n; j++) dp[0][j] = j;\n  for (let i = 1; i <= m; i++)\n    for (let j = 1; j <= n; j++)\n      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);\n  return dp[m][n];\n}\nfunction dynamicTolerance(word) {\n  const len = word.length;\n  if (len <= 3) return 0; if (len <= 5) return 1; if (len <= 8) return 2; return 3;\n}\nfunction substringScore(input, keyword) {\n  if (input.includes(keyword)) return 1.0;\n  const minLen = Math.floor(keyword.length * 0.6);\n  for (let i = 0; i <= keyword.length - minLen; i++)\n    if (input.includes(keyword.slice(i, i + minLen))) return 0.7;\n  return 0;\n}\nfunction fuzzyMatch(input, keywords) {\n  const normInput = normalize(input);\n  const inputWords = normInput.split(/\\s+/);\n  for (const kw of keywords) {\n    const normKw = normalize(kw);\n    const kwWords = normKw.split(/\\s+/);\n    if (normInput.includes(normKw)) return true;\n    if (substringScore(normInput, normKw) >= 0.7) return true;\n    let matched = 0;\n    for (const kwWord of kwWords) {\n      const tol = dynamicTolerance(kwWord);\n      for (const inputWord of inputWords)\n        if (levenshtein(inputWord, kwWord) <= tol) { matched++; break; }\n    }\n    if (matched / kwWords.length >= 0.7) return true;\n  }\n  return false;\n}\nfunction buildSystemPrompt(stateInfo) {\n  return `Sen otizmli bireyler için alışveriş becerisi eğitimi veren, sabırlı ve destekleyici bir asistansın.\\nGÖREV: Kullanıcının mesajını analiz et ve JSON formatında yanıt ver.\\nMEVCUT DURUM:\\n- State: ${stateInfo.currentState}\\n- SubState: ${stateInfo.subState}\\n- Senaryo: ${stateInfo.scenario}\\nKURALLAR:\\n- Yanıtın kısa (1-2 cümle), net, pozitif ve Türkçe olmalı\\n- Kaygı yaratma, sade ve dostane ol\\nYANIT FORMATI (sadece JSON, başka hiçbir şey yazma):\\n{\\n  \"response\": \"kullanıcıya verilecek yanıt\",\\n  \"nextState\": 5,\\n  \"nextSubState\": \"${stateInfo.subState}\"\\n}`;\n}\n\n// ============================================================\n// STATE 5 - KASAYA GEÇİŞ\n// ============================================================\nconst sessions = $getWorkflowStaticData('global');\nconst raw = $input.first().json;\nconst sessionId = raw.sessionId;\nconst userInput = String(raw.userInput || '').trim();\nconst session = JSON.parse(JSON.stringify(raw.session));\n\nlet response = '';\nlet needsLLM = false;\nlet llmSystemPrompt = '';\nlet llmUserPrompt = '';\n\nconst isTimeout = userInput === '__timeout__';\nconst foundStr = (session.foundItems || []).join(', ') || 'yok';\nconst missingStr = (session.missingItems || []).join(', ') || 'yok';\n\nif (isTimeout) {\n  session.timeoutCount = (session.timeoutCount || 0) + 1;\n} else {\n  session.timeoutCount = 0;\n}\n\nswitch (session.subState) {\n\n  case 'INIT':\n    response = `Listendeki ürünler: ${foundStr}\\nEksikler: ${missingStr}\\n\\nKasaya geçelim mi?`;\n    session.subState = 'CHECKOUT_DECISION';\n    break;\n\n  case 'CHECKOUT_DECISION':\n    if (isTimeout) {\n      response = `Kasaya geçelim mi?`;\n      break;\n    }\n    if (fuzzyMatch(userInput, ['evet', 'kasaya', 'gecelim', 'tamam', 'ok', 'hadi'])) {\n      response = `Kasada beklerken ne yapmak istersin?\\n1️⃣ Telefon notlarına bak\\n2️⃣ Nefes egzersizi yap\\n3️⃣ Kasiyere selam ver`;\n      session.subState = 'QUEUE_ACTIVITY';\n    } else {\n      needsLLM = true;\n      llmSystemPrompt = buildSystemPrompt({\n        currentState: 5, subState: 'CHECKOUT_DECISION',\n        scenario: 'Kullanıcı kasaya geçmek istiyor mu? Evet ise nextSubState: QUEUE_ACTIVITY yap. Belirsizse kasaya geçmek isteyip istemediğini sor.'\n      });\n      llmUserPrompt = userInput;\n    }\n    break;\n\n  case 'QUEUE_ACTIVITY':\n    if (isTimeout) {\n      response = `Kasada beklerken ne yapmak istersin?\\n1️⃣ Telefon notlarına bak\\n2️⃣ Nefes egzersizi yap\\n3️⃣ Kasiyere selam ver`;\n      break;\n    }\n    if (fuzzyMatch(userInput, ['1', 'telefon', 'not', 'notlar'])) {\n      needsLLM = true;\n      llmSystemPrompt = buildSystemPrompt({\n        currentState: 5, subState: 'PAYMENT',\n        scenario: 'Kullanıcı kasada beklerken telefon notlarına bakıyor. Bunu olumlu karşıla, kısa yorum yap. nextSubState: PAYMENT yap.'\n      });\n      llmUserPrompt = '1';\n      session.subState = 'PAYMENT';\n    } else if (fuzzyMatch(userInput, ['2', 'nefes', 'egzersiz', 'nefes al'])) {\n      needsLLM = true;\n      llmSystemPrompt = buildSystemPrompt({\n        currentState: 5, subState: 'PAYMENT',\n        scenario: 'Kullanıcı kasada nefes egzersizi yapacak. 4-7-8 nefes tekniğini basitçe anlat: 4 say nefes al, 7 say tut, 8 say ver. nextSubState: PAYMENT yap.'\n      });\n      llmUserPrompt = '2';\n      session.subState = 'PAYMENT';\n    } else if (fuzzyMatch(userInput, ['3', 'kasiyer', 'selam', 'merhaba'])) {\n      needsLLM = true;\n      llmSystemPrompt = buildSystemPrompt({\n        currentState: 5, subState: 'PAYMENT',\n        scenario: 'Kullanıcı kasiyere selam verecek. \"Merhaba\" veya \"İyi günler\" demesini teşvik et. Cesaret ver. nextSubState: PAYMENT yap.'\n      });\n      llmUserPrompt = '3';\n      session.subState = 'PAYMENT';\n    } else {\n      needsLLM = true;\n      llmSystemPrompt = buildSystemPrompt({\n        currentState: 5, subState: 'QUEUE_ACTIVITY',\n        scenario: 'Kullanıcı kasada beklerken 3 seçenekten birini seçmeli: 1=Telefon notları, 2=Nefes egzersizi, 3=Kasiyere selam. Mesajdan seçimi anla. Anlaşılamazsa tekrar listele. nextSubState: PAYMENT yap.'\n      });\n      llmUserPrompt = userInput;\n    }\n    break;\n\n  case 'PAYMENT':\n    if (isTimeout) {\n      response = `Ödeme yapmak için aşağıdaki butonu kullanabilirsin. 💳`;\n      break;\n    }\n    response = `Ödeme yapmak için aşağıdaki butonu kullanabilirsin. 💳\\n\\n[ÖDEME_BUTONU]`;\n    session.subState = 'COMPLETE';\n    break;\n\n  case 'COMPLETE':\n    response = `🎉 Tebrikler! Alışverişi başarıyla tamamladın!\\n\\nBulunanlar: ${foundStr}\\nEksikler: ${missingStr}\\n\\nHarika iş çıkardın!`;\n    delete sessions[sessionId];\n    return [{ json: { response, needsLLM: false, llmSystemPrompt: '', llmUserPrompt: '', session, sessionId } }];\n\n  default:\n    session.subState = 'INIT';\n    response = `Listendeki ürünler: ${foundStr}. Kasaya geçelim mi?`;\n}\n\nsessions[sessionId] = session;\nreturn [{ json: { response, needsLLM, llmSystemPrompt, llmUserPrompt, session, sessionId } }];\n"
+      },
+      "id": "399bf87a-1104-4526-8a29-a2ad82bd91b7",
+      "name": "State5_Checkout",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// PREPARE LLM NODE v2\n// ============================================================\nconst { response, needsLLM, llmSystemPrompt, llmUserPrompt, session, sessionId } = $input.first().json;\n\n// needsLLM=true ise veriyi global'a kaydet — ParseLLMResponse okuyacak\nif (needsLLM) {\n  const globalData = $getWorkflowStaticData('global');\n  globalData['__prepare__'] = { response, needsLLM, llmSystemPrompt, llmUserPrompt, session, sessionId };\n}\n\nreturn [{ json: {\n  response,\n  needsLLM: needsLLM || false,\n  llmSystemPrompt: llmSystemPrompt || '',\n  llmUserPrompt: llmUserPrompt || '',\n  session,\n  sessionId,\n  groqBody: needsLLM ? JSON.stringify({\n    model: 'llama-3.3-70b-versatile',\n    messages: [\n      { role: 'system', content: llmSystemPrompt || '' },\n      { role: 'user', content: llmUserPrompt || '' }\n    ],\n    max_tokens: 200,\n    temperature: 0.4\n  }) : ''\n} }];\n"
+      },
+      "id": "d8991974-247c-4bcc-b08a-55d94a705973",
+      "name": "PrepareLLM",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization ",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.groqBody }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1104,
+        32
+      ],
+      "id": "58b8d363-4fc8-4936-8ef9-268cbb62cd85",
+      "name": "GroqAPI"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// PARSE LLM RESPONSE NODE (Güncel)\n// İki yoldan gelebilir:\n// 1. needsLLM=false → CheckNeedsLLM false → direkt buraya (PrepareLLM verisi)\n// 2. needsLLM=true  → GroqAPI → buraya (Groq yanıtı, ama PrepareLLM verisi yok)\n//\n// Çözüm: Global static data'da PrepareLLM verisini saklıyoruz\n// ============================================================\n\nconst input = $input.first().json;\nconst globalData = $getWorkflowStaticData('global');\n\n// Bu input GroqAPI'den mi yoksa doğrudan mı geliyor?\n// GroqAPI'den gelirse \"choices\" alanı olur\nconst isGroqResponse = !!input.choices;\n\nlet prepareData, groqData;\n\nif (isGroqResponse) {\n  // Groq'tan geldi — PrepareLLM verisini global'dan al\n  groqData = input;\n  prepareData = globalData['__prepare__'] || {};\n} else {\n  // Doğrudan geldi (needsLLM=false) — PrepareLLM verisi\n  prepareData = input;\n  groqData = null;\n  // Global'a kaydet (ileride lazım olursa diye)\n  globalData['__prepare__'] = input;\n}\n\nconst needsLLM = prepareData.needsLLM || false;\nconst sessionId = prepareData.sessionId;\nlet finalResponse = prepareData.response || '';\nlet finalSession = JSON.parse(JSON.stringify(prepareData.session || {}));\n\nif (needsLLM && groqData) {\n  try {\n    if (groqData.error) throw new Error(groqData.error.message);\n\n    const raw = (groqData.choices?.[0]?.message?.content || '').trim();\n    const isJsonExpected = prepareData.llmUserPrompt !== '__TESVIK__';\n\n    if (!isJsonExpected) {\n      finalResponse = raw || 'Hadi devam edelim!';\n    } else {\n      let parsed = null;\n      try {\n        const cleaned = raw.replace(/```json|```/g, '').trim();\n        parsed = JSON.parse(cleaned);\n      } catch (e) {\n        finalResponse = 'Tekrar söyler misin?';\n        parsed = null;\n      }\n\n      if (parsed) {\n        finalResponse = parsed.response || 'Devam et!';\n\n        // State 0 WAITING_COUNT\n        if (parsed.count === 2) {\n          finalSession.productList = ['süt', 'yumurta'];\n          finalSession.subState = 'WAITING_START';\n          finalSession.timeoutCount = 0;\n        } else if (parsed.count === 3) {\n          finalSession.productList = ['süt', 'yumurta', 'ekmek'];\n          finalSession.subState = 'WAITING_START';\n          finalSession.timeoutCount = 0;\n        }\n\n        // State 0 WAITING_START\n        if (parsed.ready === true) {\n          finalSession.currentState = 1;\n          finalSession.subState = 'INIT';\n          finalSession.timeoutCount = 0;\n        }\n        \n        // --- SONRADAN EKLENEN STATE VE İZLEME KONTROLLERİ ---\n        \n        // State 1, 2, 3 için ipucu sayısı takibi\n        if (parsed.hintCount !== undefined && parsed.hintCount !== null) {\n          finalSession.hintCount = Number(parsed.hintCount);\n        }\n\n        // State 4 (Exception Handling) ve ürün bulma/vazgeçme senaryoları\n        if (parsed.itemAction) {\n          finalSession.itemStatuses = finalSession.itemStatuses || {};\n          const missItem = finalSession.notFoundItem || \"ürün\";\n          finalSession.itemStatuses[missItem] = parsed.itemAction;\n\n          // Eğer ürün bulundu ya da yerine alternatif alındıysa:\n          if (parsed.itemAction === 'substituted' || parsed.itemAction === 'found') {\n            finalSession.foundItems = finalSession.foundItems || [];\n            if (!finalSession.foundItems.includes(missItem)) {\n              finalSession.foundItems.push(missItem);\n            }\n          } \n          // Eğer ürün listeden çıkarıldı ya da başka markete ertelendiyse:\n          else if (parsed.itemAction === 'removed' || parsed.itemAction === 'postponed') {\n            finalSession.missingItems = finalSession.missingItems || [];\n            if (!finalSession.missingItems.includes(missItem)) {\n              finalSession.missingItems.push(missItem);\n            }\n          }\n        }\n        \n        // State 4'te başarısız deneme sayısını tetikleyen yapı\n        if (parsed.incrementAttempts) {\n          finalSession.exceptionAttempts = (finalSession.exceptionAttempts || 0) + 1;\n        }\n        \n        // State 4'te kullanıcının seçtiği çözüm yolunu (ör: A, B, C, D) takip etmek için\n        if (parsed.choice && parsed.choice !== \"unknown\") {\n          finalSession.currentChoice = parsed.choice;\n        }\n        \n        // ---------------------------------------------------\n\n        // Genel geçiş (tüm State'lerin ortak çalıştırdığı kısım)\n        if (parsed.nextState !== undefined && parsed.nextState !== null) {\n          finalSession.currentState = Number(parsed.nextState);\n        }\n        if (parsed.nextSubState !== undefined && parsed.nextSubState !== null) {\n          finalSession.subState = String(parsed.nextSubState);\n        }\n      }\n    }\n\n    // Session'ı kaydet\n    globalData[sessionId] = finalSession;\n\n  } catch (err) {\n    finalResponse = 'Bir sorun oluştu, tekrar dener misin?';\n  }\n}\n\n// needsLLM=false ise PrepareLLM verisini global'a kaydet (sonraki adım için)\nif (!needsLLM && sessionId) {\n  globalData['__prepare__'] = prepareData;\n}\n\nreturn [{ json: {\n  response: finalResponse,\n  currentState: finalSession?.currentState ?? 0,\n  subState: finalSession?.subState ?? 'INIT',\n  source: needsLLM ? 'llm' : 'rule',\n  sessionId,\n  timestamp: new Date().toISOString()\n} }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        208
+      ],
+      "id": "ceb892d8-59fe-4d2f-844a-f1721f99cbe2",
+      "name": "ParseLLMResponse"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0ab6e894-ecfd-4b7a-b94a-5d75920d87de",
+              "leftValue": "={{ $json.needsLLM }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        736,
+        208
+      ],
+      "id": "ad834972-d0ae-418d-b87d-bb15c03ea191",
+      "name": "CheckNeedsLLM"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "LoadSession",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LoadSession": {
+      "main": [
+        [
+          {
+            "node": "RouteByState",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RouteByState": {
+      "main": [
+        [
+          {
+            "node": "State0_Onboarding",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "State1_FindItem1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "State2_FindItem2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "State3_FindItem3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "State4_Exception",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "State5_Checkout",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "State0_Onboarding": {
+      "main": [
+        [
+          {
+            "node": "PrepareLLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "State1_FindItem1": {
+      "main": [
+        [
+          {
+            "node": "PrepareLLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "State2_FindItem2": {
+      "main": [
+        [
+          {
+            "node": "PrepareLLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "State3_FindItem3": {
+      "main": [
+        [
+          {
+            "node": "PrepareLLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "State4_Exception": {
+      "main": [
+        [
+          {
+            "node": "PrepareLLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "State5_Checkout": {
+      "main": [
+        [
+          {
+            "node": "PrepareLLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepareLLM": {
+      "main": [
+        [
+          {
+            "node": "CheckNeedsLLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GroqAPI": {
+      "main": [
+        [
+          {
+            "node": "ParseLLMResponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ParseLLMResponse": {
+      "main": [
+        [
+          {
+            "node": "RespondToWebhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CheckNeedsLLM": {
+      "main": [
+        [
+          {
+            "node": "GroqAPI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ParseLLMResponse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "94599ab6-5011-4710-a78a-62561cfd0800",
+  "meta": {
+    "instanceId": "234c067f2af5613faac138d93e7f61a0df093e82c1d01b6c2023fbeb8f3c013e"
+  },
+  "id": "YCcpMofULEN0WUUb",
+  "tags": []
+}
